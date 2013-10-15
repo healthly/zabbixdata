@@ -7,6 +7,11 @@ from pymongo import Connection
 from datetime import timedelta
 from pymongo.errors import ConnectionFailure
 
+def zapi():
+	zapi = ZabbixAPI("")
+	zapi.login("", "")
+	return zapi
+
 def mongoclient(host,port,dbname):
 	''' host: mongodb hostname
 	port: mongodb port
@@ -33,10 +38,6 @@ def badip2mongo(dbC,collect,iplist):
 		else:
 			dbC[collect].insert({"ip":ip[0],"counts":1}, save=True)
 
-def zapi():
-	zapi = ZabbixAPI("http://")
-	zapi.login("1", "11111")
-	return zapi
 
 def gItemid(idlist,itemkey):
 	item1 = {}
@@ -63,6 +64,8 @@ def gHistory(itemlist,timeS):
 	valuedays = {}
 	for i in itemlist:
 		for j in timeS:
+			if len(value1):
+				del value1[:]
 			
 			# Create a time range
 			item_id = i
