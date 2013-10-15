@@ -3,6 +3,36 @@ from datetime import datetime
 import time
 from pyzabbix import ZabbixAPI
 from datetime import timedelta
+from pymongo import Connection
+from datetime import timedelta
+from pymongo.errors import ConnectionFailure
+
+def mongoclient(host,port,dbname):
+	''' host: mongodb hostname
+	port: mongodb port
+	dbname: mongodb database names
+	times: times before now to get logs from mongodb,eg:-10
+	'''
+	try:
+		_c1 = Connection(host, port)
+	except ConnectionFailure, e:
+		sys.stderr.write("Could not connect to MongoDB: %s" % e)
+		sys.exit(1)
+	dbC = _c1[dbname]
+	assert dbC.connection == _c1
+	return dbC
+	
+def badip2mongo(dbC,collect,iplist):
+	for ip in iplist:
+		if ip[0] in comiplist.comiplist():
+			continue
+		i = dbC[collect].find_one({"ip":ip[0]})
+		if i:
+			c1 = i.get("counts") + 1
+			dbC[collect].update({"ip":ip[0]},{"$set":{"counts":c1}}, save=True)
+		else:
+			dbC[collect].insert({"ip":ip[0],"counts":1}, save=True)
+
 def zapi():
 	zapi = ZabbixAPI("http://")
 	zapi.login("1", "11111")
@@ -29,8 +59,11 @@ def time1():
 
 
 def gHistory(itemlist,timeS):
+	value1 = []
+	valuedays = {}
 	for i in itemlist:
 		for j in timeS:
+			
 			# Create a time range
 			item_id = i
 			time_till = j
@@ -41,7 +74,7 @@ def gHistory(itemlist,timeS):
 				time_from=time_from,
 				time_till=time_till,
 				output='extend',
-				limit='10',
+				limit='2000',
 			)
 		
 			# If nothing was found, try getting it from history
@@ -50,15 +83,17 @@ def gHistory(itemlist,timeS):
 					time_from=time_from,
 					time_till=time_till,
 					output='extend',
-					limit='10',
+					limit='2000',
 					history=0,
 				)
+			for point in history:
+				value1.append(int(point['value']))
+			m1 = max(value1)
+			valuedays[datetime.fromtimestamp(j)] = m1
 			
-			#print history
-		# Print out each datapoint
-		for point in history:
-			print point
-			#print("{0}: {1}".format(datetime.fromtimestamp(int(point['clock'])).strftime("%x %X"), point['value']))
+	
+	print valuedays
+				#print("{0}: {1}".format(datetime.fromtimestamp(int(point['clock'])).strftime("%x %X"), point['value']))
 	
 if __name__=="__main__":
 	a = [u'10141']
