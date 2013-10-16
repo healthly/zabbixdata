@@ -24,26 +24,30 @@ def mongoclient(host,port,dbname):
 	
 def badip2mongo(dbC,collect,iplist):
 	for ip in iplist:
-		if ip[0] in comiplist.comiplist():
-			continue
-		i = dbC[collect].find_one({"ip":ip[0]})
-		if i:
-			c1 = i.get("counts") + 1
-			dbC[collect].update({"ip":ip[0]},{"$set":{"counts":c1}}, save=True)
-		else:
-			dbC[collect].insert({"ip":ip[0],"counts":1}, save=True)
+		dbC[collect].insert({"ip":ip[0],"counts":1}, save=True)
 
 def zapi():
+
 	zapi = ZabbixAPI("")
 	zapi.login("", "")
 	return zapi
+	
+def gHostid():
+	hostid1 = {}
+	for h in zapi().host.get(output='extend'):
+		i = h['hostid']
+		j = h['name']
+		hostid1[i] = j
+		
+	return hostid1
 
-def gItemid(idlist,itemkey):
+def gItemid(HostidL,temkey):
 	item1 = {}
-	for id in idlist:
-		for h in zapi().item.get(hostids=id,search={"key_":itemkey}):
+	for Hostid in HostidL:
+		for h in zapi().item.get(hostids=Hostid,search={"key_":itemkey}):
 			i = h['itemid']
-			item1[i] = id
+			j = h['key_']
+			item1[i] = [HostidL[Hostid],j]
 	
 	return item1
 
@@ -58,13 +62,15 @@ def time1():
 	return timeA
 
 
-def gHistory(itemlist,timeS):
+def gTrends(itemlist,timeS):
 	value1 = []
 	valuedays = []
+	valueavg = {}
 	valueall = {}
 	for i in itemlist:
 		if len(valuedays):
 			del valuedays[:]
+			
 		for j in timeS:
 			if len(value1):
 				del value1[:]
@@ -72,7 +78,7 @@ def gHistory(itemlist,timeS):
 			# Create a time range
 			item_id = i
 			time_till = j
-			time_from = time_till - 60 * 60 * 14 # 11 hours
+			time_from = time_till - 60 * 60 * 14 # 14 hours
 		
 			# Query item's trend data
 			history = zapi().trends.get(itemids=[item_id],
@@ -86,15 +92,17 @@ def gHistory(itemlist,timeS):
 				value1.append(int(point['value_avg']))
 			avg1 = sum(value1) / 14
 			valuedays.append(avg1)
-		print len(valuedays)
 		avg = sum(valuedays)/len(valuedays)
-		valueall[i] = avg
-	print valueall
-				#print("{0}: {1}".format(datetime.fromtimestamp(int(point['clock'])).strftime("%x %X"), point['value']))
+		valueavg[(i,itemlist[i][0]),itemlist[i][1])] = avg
+		
+	#return valueavg
+	print valueavg
 	
 if __name__=="__main__":
-	a = [u'10141']
-	k = u"net.if"
+	#h = gHostid()
+	h = {u'10141':'nginx111'}
 	t = time1()
-	l = gItemid(a,k)
-	gHistory(l,t)
+	for a in h:
+		k = u"net.if"
+		l = gItemid(a,k)
+		gTrends(l,t)
